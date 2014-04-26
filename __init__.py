@@ -1,1 +1,1 @@
-from bootstrap import run_in_parallel, bootstrap
+from sampling import bootstrap
