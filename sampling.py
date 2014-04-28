@@ -111,7 +111,10 @@ def bootstrap(f, data, size, fargs={}, by=None, **kwargs):
     >>> bstrap = bootstrap(f, data, 1000, fargs={'missing':'drop'})
 
     '''
-
+    accepted = ['seed', 'threads']
+    for key in kwargs.keys():
+        if key not in accepted:
+            raise KeyError('unexpected keyword argument {}'.format(key))
     seed = 1234 if 'seed' not in kwargs else kwargs['seed']
     threads = 1 if 'threads' not in kwargs else kwargs['threads']
 
@@ -147,7 +150,6 @@ def bootstrap(f, data, size, fargs={}, by=None, **kwargs):
             outf.append(func(f,data,fargs,index))
 
     else:
-        warnings.warn('Parallel processing not yet stable.')
         pool = Pool(threads)
         outf.extend(pool.map(functools.partial(func,f,data,fargs),indices))
         
@@ -186,7 +188,7 @@ class BootstrapResult(object):
 
     def __init__(self, empf):
 
-        self.empf = empf
+        self.empf = empf[1:]
         self.point = empf[0]
 
     def get_axis(self):
@@ -248,16 +250,16 @@ class BootstrapResult(object):
         axis = self.get_axis()
 
         if isinstance(null, np.ndarray):
-            try:
-                null - self.point
-            except:
-                message = 'null of shape {} not '.format(null.shape)
-                message += 'broadcastable with point estimate'
-                raise ValueError(message)
-        
+            if null.shape != self.point.shape:
+                raise ValueError('null not same shape as point estimate')
+        elif not isinstance(null, (int,float,np.float,np.int)):
+            raise ValueError('null should be int or float, received {}'\
+                             .format(type))
+
         if isinstance(tail, str):
             if tail not in ['left','right']:
                 raise ValueError('tail must be "left" or "right"')
+
         elif isinstance(tail, np.ndarray):
             if tail.shape != self.point.shape:
                 raise ValueError('tail not same shape as point estimate')

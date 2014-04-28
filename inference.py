@@ -42,13 +42,12 @@ def shift(dist, point, null, twosided=True, tail='right', axis=None):
 
     # setting null distribution as dist centered at null
     nulldist = dist - dist.mean(axis=axis, keepdims=True) + null
-    
-    N = len(nulldist) - 1    
+    N = len(nulldist)
     
     if twosided:
-        right_tail = (nulldist >= abs(point)).sum(axis=axis)
-        left_tail = (nulldist <= -abs(point)).sum(axis=axis)
-        
+        right_tail = (nulldist >= abs(point - null) + null).sum(axis=axis)
+        left_tail = (nulldist < -abs(point - null) + null).sum(axis=axis)
+
         return (right_tail + left_tail)/N
     
     else:

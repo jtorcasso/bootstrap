@@ -27,9 +27,7 @@ def mean(data, add=0):
 
     return data.mean() + add
 
-start = time.time()
 boot = bootstrap(mean, data, 1000, threads=1)
-print '1 Thread in:', time.time() - start
 print 'True:\n'
 print 2*norm.sf(data.mean()/(data.std()/np.sqrt(len(data))))
 print 'Bootstrapped:\n'
@@ -40,31 +38,28 @@ print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
 print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
 print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
 
-start = time.time()
+boot = bootstrap(mean, data, 100000, threads=2)
+print 'True:\n'
+print 2*norm.sf(data.mean()/(data.std()/np.sqrt(len(data))))
+print 'Bootstrapped:\n'
+print boot.pvalue(method='normal',twosided=True,null=0)
+print boot.pvalue(method='shift',twosided=True,null=0)
+print boot.pvalue(method='normal',twosided=False,tail='right',null=0)
+print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
+print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
+print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
+
 boot = bootstrap(mean, data, 1000, threads=1, fargs={'add':0.2})
-print '2 Threads in:', time.time() - start
 print 'True:\n'
-print 2*norm.sf(data.mean()/(data.std()/np.sqrt(len(data))))
+print 2*norm.sf((data.mean())/(data.std()/np.sqrt(len(data))))
 print 'Bootstrapped:\n'
-print boot.pvalue(method='normal',twosided=True,null=0)
-print boot.pvalue(method='shift',twosided=True,null=0)
-print boot.pvalue(method='normal',twosided=False,tail='right',null=0)
-print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
-print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
-print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
+print boot.pvalue(method='normal',twosided=True,null=0.2)
+print boot.pvalue(method='shift',twosided=True,null=0.2)
+print boot.pvalue(method='normal',twosided=False,tail='right',null=0.2)
+print boot.pvalue(method='shift',twosided=False,tail='right',null=0.2)
+print boot.pvalue(method='normal',twosided=False,tail='left',null=0.2)
+print boot.pvalue(method='shift',twosided=False,tail='left',null=0.2)
 
-start = time.time()
-boot = bootstrap(mean, data, 1000, threads=2)
-print '2 Threads in:', time.time() - start
-print 'True:\n'
-print 2*norm.sf(data.mean()/(data.std()/np.sqrt(len(data))))
-print 'Bootstrapped:\n'
-print boot.pvalue(method='normal',twosided=True,null=0)
-print boot.pvalue(method='shift',twosided=True,null=0)
-print boot.pvalue(method='normal',twosided=False,tail='right',null=0)
-print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
-print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
-print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
 
 N = 1500
 b = 20 + 20*np.random.randn(N)
@@ -81,15 +76,15 @@ tails = np.array(['right', 'left', 'right', 'right'])
 def simpleOLS(X):
     y = X[:,0]
     x = X[:,1:]
-    
+
     results = sm.OLS(y,x).fit()
 
     B = results.params
 
     return B
 
-
-boot = bootstrap(simpleOLS, data, 1000, weight=5,threads=1)
+start = time.time()
+boot = bootstrap(simpleOLS, data, 10000, threads=1)
 print 'True:\n'
 print sm.OLS(data[:,0],data[:,1:]).fit().pvalues
 print 'Bootstrapped:\n'
@@ -103,17 +98,24 @@ print boot.pvalue(method='normal',twosided=False,tail='right',null=0)
 print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
 print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
 print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
+print '1 Thread in {} seconds.'.format(time.time() - start)
 
-#boot = bootstrap(simpleOLS, data, 1000, threads=2)
-#print 'True:\n'
-#print sm.OLS(data[:,0],data[:,1:]).fit().pvalues
-#print 'Bootstrapped:\n'
-#print boot.pvalue(method='normal',twosided=True,null=0)
-#print boot.pvalue(method='shift',twosided=True,null=0)
-#print boot.pvalue(method='normal',twosided=False,tail='right',null=0)
-#print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
-#print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
-#print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
+start = time.time()
+boot = bootstrap(simpleOLS, data, 10000, threads=4)
+print 'True:\n'
+print sm.OLS(data[:,0],data[:,1:]).fit().pvalues
+print 'Bootstrapped:\n'
+print boot.pvalue(method='normal',twosided=True,null=0)
+print boot.pvalue(method='shift',twosided=True,null=0)
+print boot.pvalue(method='normal',twosided=False,tail=tails,null=0)
+print boot.pvalue(method='shift',twosided=False,tail=tails,null=0)
+print boot.pvalue(method='normal',twosided=False,tail=tails,null=0)
+print boot.pvalue(method='shift',twosided=False,tail=tails,null=0)
+print boot.pvalue(method='normal',twosided=False,tail='right',null=0)
+print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
+print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
+print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
+print '4 Threads in {} seconds.'.format(time.time() - start)
 
 data = pd.DataFrame(data)
 
@@ -127,7 +129,7 @@ def stackedOLS(X):
 
     return np.vstack((B,B))
 
-boot = bootstrap(stackedOLS, data, 1000, threads=1)
+boot = bootstrap(stackedOLS, data, 10000, threads=1)
 print 'True:\n'
 pvals = sm.OLS(data[0],data[[1,2,3,4]]).fit().pvalues
 print np.vstack((pvals,pvals)).T
@@ -143,18 +145,19 @@ tails = np.array(['right', 'left', 'right', 'right'])
 tails = np.vstack((tails,tails)).T
 print boot.pvalue(method='normal',twosided=False,tail=tails,null=0)
 print boot.pvalue(method='shift',twosided=False,tail=tails,null=0)
-#boot = bootstrap(stackedOLS, data, 1000, threads=2)
-#print 'True:\n'
-#pvals = sm.OLS(data[:,0],data[:,1:]).fit().pvalues
-#print np.vstack((pvals,pvals)).T
-#
-#print 'Bootstrapped:\n'
-#print boot.pvalue(method='normal',twosided=True,null=0)
-#print boot.pvalue(method='shift',twosided=True,null=0)
-#print boot.pvalue(method='normal',twosided=False,tail='right',null=0)
-#print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
-#print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
-#print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
+
+boot = bootstrap(stackedOLS, data, 10000, threads=4)
+print 'True:\n'
+pvals = sm.OLS(data[0],data[[1,2,3,4]]).fit().pvalues
+print np.vstack((pvals,pvals)).T
+
+print 'Bootstrapped:\n'
+print boot.pvalue(method='normal',twosided=True,null=0)
+print boot.pvalue(method='shift',twosided=True,null=0)
+print boot.pvalue(method='normal',twosided=False,tail='right',null=0)
+print boot.pvalue(method='shift',twosided=False,tail='right',null=0)
+print boot.pvalue(method='normal',twosided=False,tail='left',null=0)
+print boot.pvalue(method='shift',twosided=False,tail='left',null=0)
 
 data['treat'] = np.random.randint(low=0,high=2,size=1500)
 data['male'] = np.random.randint(low=0,high=2,size=1500)
