@@ -162,7 +162,7 @@ def bootstrap(f, data, size, fargs={}, by=None, **kwargs):
         outf.extend(pool.map(functools.partial(func,f,data,fargs),indices))
         pool.close()
         pool.join()
-        
+
     outf = [out for out in outf if out is not None]
     print 'Bootstrap succeeded on {} of {} draws'.format(len(outf)-1,size)
     
@@ -229,6 +229,73 @@ class BootstrapResult(object):
         '''
 
         return np.median(self.empf, axis=self.get_axis())
+
+    def pvalue(self, twosided=True, null=0, **kwargs):
+        '''generate pvalue of parameter estimate
+
+        Parameters
+        ----------
+        twosided : boolean
+            False, for one-sided p-values and True for two-sided
+        null : numeric type or array-like
+            value of parameter under null hypothesis, either
+            a scalar or array of shape like point estimate
+
+        kwargs
+        ------
+        tail : str or array
+            specify 'left' or 'right', or an array of 
+            such strings for one-sided tests. 'right' 
+            implies a one-sided test that the point
+            estimate is greater than the null
+        method : str
+            'normal', assume null distribution is normal
+            'shift', assume only that null distribution is the 
+            bootstrap distribution recentered at the null
+        mtp : None or str
+            None, for no multiple testing procedure, 'stepdown', 
+            for the stepdown procedure
+
+        Returns
+        -------
+        pvalue : int, float, np.ndarray
+            pvalue based on bootstrap inference
+
+        '''
+
+        tail = kwargs.get('tail', 'right')
+        method = kwargs.get('method', 'shift')
+        mtp = kwargs.get('mtp', None)
+
+        if isinstance(null, np.ndarray):
+            if null.shape != self.point.shape:
+                raise ValueError('null not same shape as point estimate')
+        elif not isinstance(null, (int,float,np.float,np.int)):
+            raise ValueError('null should be int or float, received {}'\
+                             .format(type))
+
+        if isinstance(tail, str):
+            if tail not in ['left','right']:
+                raise ValueError('tail must be "left" or "right"')
+
+        elif isinstance(tail, np.ndarray):
+            if tail.shape != self.point.shape:
+                raise ValueError('tail not same shape as point estimate')
+            if not set(tail.flat).issubset(set(['left','right'])):
+                raise ValueError('all entries in tail must be "left" or "right"')
+        else:
+            raise ValueError('tail must be str or array of strings')
+
+        if method not in ['shift', 'normal']:
+            raise ValueError('method must be either "shift" or "normal"')
+
+        if mtp is not None:
+            if mtp not in ['stepdown']:
+                raise ValueError('mtp must be None or "stepdown"')
+
+        if mtp == 'stepdown':
+            if 
+        
 
     def pvalue(self, twosided=True, tail='right', method='shift', null=0):
         '''generate pvalue of parameter estimate
