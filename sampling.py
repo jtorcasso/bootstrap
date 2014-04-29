@@ -98,18 +98,26 @@ def bootstrap(f, data, size, fargs={}, by=None, **kwargs):
         hypothesis testing
 
     Ex: 
-
+    >>> import statsmodels.api as sm
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> import bootstrap as bstrap
+    >>> data = pd.DataFrame(np.ones((100,2)))
+    >>> data.columns = ['income', 'ability']
+    >>> data['ability'] = np.random.randn(100)
+    >>> data['income'] = 4*data['ability']
     >>> def f(data, missing='drop'):
-        
-            endog = data['income']
-            exog = data['ability']
-
-            fit = sm.OLS(endog,exog,missing=missing).fit()
-
-            return fit.params
-
-    >>> bstrap = bootstrap(f, data, 1000, fargs={'missing':'drop'})
-
+    ...     
+    ...     endog = data['income']
+    ...     exog = data['ability']
+    ...     
+    ...     fit = sm.OLS(endog,exog,missing=missing).fit()
+    ...     
+    ...     return fit.params
+    >>> boot = bstrap.bootstrap(f, data, 1000, fargs={'missing':'drop'})
+    Bootstrap succeeded on 1000 of 1000 draws
+    >>> boot.pvalue()
+    array([ 0.])
     '''
     accepted = ['seed', 'threads']
     for key in kwargs.keys():
@@ -152,6 +160,8 @@ def bootstrap(f, data, size, fargs={}, by=None, **kwargs):
     else:
         pool = Pool(threads)
         outf.extend(pool.map(functools.partial(func,f,data,fargs),indices))
+        pool.close()
+        pool.join()
         
     outf = [out for out in outf if out is not None]
     print 'Bootstrap succeeded on {} of {} draws'.format(len(outf)-1,size)
