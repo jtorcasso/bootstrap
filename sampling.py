@@ -14,10 +14,9 @@ from __future__ import division
 
 import numpy as np
 import pandas as pd
-from inference import shift, normal
+from inference import single_pvalue, stepdown_pvalue
 from multiprocessing import Pool
 import functools
-import warnings
 
 def draw_index(data, size, by=None, seed=1234):
     '''sample indices from data
@@ -128,29 +127,19 @@ def bootstrap(f, data, size, fargs={}, by=None, **kwargs):
 
     indices = draw_index(data, size, by=by, seed=seed)
 
-    point = f(data, **fargs)
-
-    if isinstance(point, (pd.Series, pd.DataFrame, np.ndarray)):
-        pass
-    elif isinstance(point, (int,float,np.int,np.float)):
-        point = np.array(point)
-    else:
-        raise ValueError('function returns unsupported type {}'\
-                         .format(type(point)))
-
-    if point.ndim == 0:
-        stack = np.hstack
-    elif point.ndim == 1:
-        stack = np.vstack
-    elif point.ndim == 2:
-        stack = np.dstack
-    else:
-        raise ValueError('function output too high-dimensional')
-    
     if isinstance(data, (pd.DataFrame, pd.Series)):
         func = function_wrapper1
     elif isinstance(data, np.ndarray):
         func = function_wrapper2
+
+    point = f(data, **fargs)
+
+    types = (pd.Series, pd.DataFrame, np.ndarray, 
+             int, float, np.int, np.float)
+
+    if not isinstance(point, types):
+        raise ValueError('function {} returns unsupported type {}'\
+                         .format(f, type(point)))
     
     outf = [point]
     if threads == 1:
@@ -163,14 +152,11 @@ def bootstrap(f, data, size, fargs={}, by=None, **kwargs):
         pool.close()
         pool.join()
 
-    outf = [out for out in outf if out is not None]
+    outf = [np.array(out).flat for out in outf if out is not None]
     print 'Bootstrap succeeded on {} of {} draws'.format(len(outf)-1,size)
-    
-    if point.ndim == 2:
-        
-        return BootstrapResult(stack(outf).T)
 
-    return BootstrapResult(stack(outf))
+
+    return BootstrapResult(np.vstack(outf), np.array(point).shape)
 
 def function_wrapper1(f, data, fargs, index):
     '''wrapper for functions in bootstrapper'''
@@ -196,39 +182,44 @@ class BootstrapResult(object):
         empirical bootstrap parameter distribution
     '''
 
-    def __init__(self, empf):
+    def __init__(self, empf, shape):
 
         self.empf = empf[1:]
         self.point = empf[0]
-
-    def get_axis(self):
-        '''find proper axis for distribution
-        '''
-
-        ndim = self.empf.ndim
-
-        if ndim == 1:
-            return None
-        else:
-            return 0
+        self.shape = shape
 
     def std(self):
         '''wrapper for numpy.std
         '''
 
-        return np.std(self.empf, axis=self.get_axis())
+        return self._format(np.std(self.empf, axis=0))
 
     def mean(self):
         '''wrapper for numpy.mean
         '''
 
-        return np.mean(self.empf, axis=self.get_axis())
+        return self._format(np.mean(self.empf, axis=0))
 
     def median(self):
         '''wrapper for numpy.median
         '''
 
-        return np.median(self.empf, axis=self.get_axis())
+        return self._format(np.median(self.empf, axis=0))
+
+    def _format(self, stat):
+        '''reshapes output to conform to function output
+
+        Parameters
+        ----------
+        stat : array-like
+            statistic to reshape
+
+        Returns
+        -------
+        stat_formatted : array-like
+            reshaped statistic
+        '''
+        return stat.reshape(self.shape)
 
     def pvalue(self, twosided=True, null=0, **kwargs):
         '''generate pvalue of parameter estimate
@@ -293,62 +284,9 @@ class BootstrapResult(object):
             if mtp not in ['stepdown']:
                 raise ValueError('mtp must be None or "stepdown"')
 
-        if mtp == 'stepdown':
-            if 
-        
-
-    def pvalue(self, twosided=True, tail='right', method='shift', null=0):
-        '''generate pvalue of parameter estimate
-
-        Parameters
-        ----------
-        twosided : boolean
-            False, for one-sided p-values and True for two-sided
-        tail : str or array
-            specify 'left' or 'right', or an array of 
-            such strings for one-sided tests. 'right' 
-            implies a one-sided test that the point
-            estimate is greater than the null
-        method : str
-            'normal', assume null distribution is normal
-            'shift', assume only that null distribution is the 
-            bootstrap distribution recentered at the null
-        null : numeric type or array-like
-            value of parameter under null hypothesis, either
-            a scalar or array of shape like point estimate
-
-        Returns
-        -------
-        pvalue : int, float, np.ndarray
-            pvalue based on bootstrap inference
-
-        '''
-
-        axis = self.get_axis()
-
-        if isinstance(null, np.ndarray):
-            if null.shape != self.point.shape:
-                raise ValueError('null not same shape as point estimate')
-        elif not isinstance(null, (int,float,np.float,np.int)):
-            raise ValueError('null should be int or float, received {}'\
-                             .format(type))
-
-        if isinstance(tail, str):
-            if tail not in ['left','right']:
-                raise ValueError('tail must be "left" or "right"')
-
-        elif isinstance(tail, np.ndarray):
-            if tail.shape != self.point.shape:
-                raise ValueError('tail not same shape as point estimate')
-            if not set(tail.flat).issubset(set(['left','right'])):
-                raise ValueError('all entries in tail must be "left" or "right"')
-        else:
-            raise ValueError('tail must be str or array of strings')
-        
-        if method == 'shift':
-
-            return shift(self.empf, self.point, null, twosided, tail, axis)
-
-        elif method == 'normal':
-
-            return normal(self.empf, self.point, null, twosided, tail, axis)
+        if (mtp is None) or (self.shape == ()):
+            return self._format(single_pvalue(self.empf, self.point, \
+                                 twosided, tail, method, null))
+        elif mtp == 'stepdown':
+            return self._format(stepdown_pvalue(self.empf, self.point, \
+                                 twosided, tail, method, null))
