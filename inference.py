@@ -96,8 +96,8 @@ def stepdown_pvalue(dist, point, twosided, tail, method):
 
     point = point/dist.std(axis=0)
 
-    jindices = range(single_pvals.size)
-    for jindex in np.argsort(single_pvals):
+    jindices = range(point.size)
+    for jindex in np.argsort(point):
         jpoint = np.resize(point[jindex], 1)
 
         if twosided:
