@@ -200,7 +200,7 @@ class BootstrapResult(object):
 
     def __init__(self, empf, shape):
 
-        self.empf = empf[1:]
+        self.empf = empf
         self.point = empf[0]
         self.shape = shape
 
@@ -221,6 +221,16 @@ class BootstrapResult(object):
         '''
 
         return self._format(np.median(self.empf, axis=0))
+
+    def get_point(self):
+        '''point estimate'''
+
+        return self._format(self.point)
+
+    def get_empf(self):
+        '''empirical distribution'''
+
+        return self.empf.reshape((-1,) + self.shape)
 
     def _format(self, stat):
         '''reshapes output to conform to function output
